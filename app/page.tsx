@@ -1,91 +1,73 @@
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-import styles from './page.module.css'
+import Trending from "app/(home)/Trending";
+import Tech from "app/(home)/Tech";
+import Travel from "app/(home)/Travel";
+import Other from "app/(shared)/Other";
+import Subscribe from "app/(shared)/Subscribe";
+import Sidebar from "app/(shared)/Sidebar";
+import { prisma } from "app/api/client";
+import { Post } from "@prisma/client";
 
-const inter = Inter({ subsets: ['latin'] })
+export const revalidate = 60;
 
-export default function Home() {
+const getPosts = async () => {
+  const posts = await prisma.post.findMany();
+
+  const formattedPosts = await Promise.all(
+    posts.map(async (post: Post) => {
+      const imageModule = require(`../public${post.image}`);
+      return {
+        ...post,
+        image: imageModule.default,
+      };
+    })
+  );
+
+  return formattedPosts;
+};
+
+export default async function Home() {
+  const posts = await getPosts();
+
+  const formatPosts = () => {
+    const trendingPosts: Array<Post> = [];
+    const techPosts: Array<Post> = [];
+    const travelPosts: Array<Post> = [];
+    const otherPosts: Array<Post> = [];
+
+    posts.forEach((post: Post, i: number) => {
+      if (i < 4) {
+        trendingPosts.push(post);
+      }
+      if (post?.category === "Tech") {
+        techPosts.push(post);
+      } else if (post?.category === "Travel") {
+        travelPosts.push(post);
+      } else if (post?.category === "Interior Design") {
+        otherPosts.push(post);
+      }
+    });
+
+    return [trendingPosts, techPosts, travelPosts, otherPosts];
+  };
+
+  const [trendingPosts, techPosts, travelPosts, otherPosts] = formatPosts();
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <main className="px-10 leading-7">
+      <Trending trendingPosts={trendingPosts} />
+      <div className="md:flex gap-10 mb-5">
+        <div className="basis-3/4">
+          <Tech techPosts={techPosts} />
+          <Travel travelPosts={travelPosts} />
+          <Other otherPosts={otherPosts} />
+          <div className="hidden md:block">
+            <Subscribe />
+          </div>
         </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-        <div className={styles.thirteen}>
-          <Image src="/thirteen.svg" alt="13" width={40} height={31} priority />
+        <div className="basis-1/4">
+          <Sidebar />
         </div>
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://beta.nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>Explore the Next.js 13 playground.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={inter.className}>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p className={inter.className}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
       </div>
     </main>
-  )
+  );
 }
